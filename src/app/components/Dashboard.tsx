@@ -21,9 +21,10 @@ import {
     Star,
     Bell,
 } from "lucide-react";
-import { mockClients, advisors } from "./mock-data";
+import { advisors } from "./mock-data";
 import type { Client } from "./mock-data";
 import type { Task, Alert } from "./mock-data";
+import { useApi } from "../context/ApiContext";
 import {
     GenerateReportModal,
     AllAlertsModal,
@@ -151,72 +152,74 @@ function ScoreBar({ score, color, height }: { score: number; color: string; heig
 }
 
 /* ---- computed data ---- */
-const activeClients = mockClients.filter((c) => c.engagementStatus === "Active");
-const onHoldClients = mockClients.filter((c) => c.engagementStatus === "On Hold");
-const completedClients = mockClients.filter((c) => c.engagementStatus === "Completed");
-const highRiskClients = mockClients.filter((c) => c.riskLevel === "High");
-const mediumRiskClients = mockClients.filter((c) => c.riskLevel === "Medium");
-const lowRiskClients = mockClients.filter((c) => c.riskLevel === "Low");
-const complianceAttention = mockClients.filter((c) => c.complianceStatus === "Attention Needed");
-
-const allTasks = mockClients.flatMap((c) => c.tasks.map((t) => ({ ...t, clientName: c.name, clientId: c.id })));
-const overdueTasks = allTasks.filter((t) => t.status === "Overdue");
-const inProgressTasks = allTasks.filter((t) => t.status === "In Progress");
-const openTasks = allTasks.filter((t) => t.status === "Open");
-
-const allAlerts = mockClients.flatMap((c) => c.alerts.map((a) => ({ ...a, clientName: c.name, clientId: c.id })));
-const criticalAlerts = allAlerts.filter((a) => a.severity === "Critical");
-
-const allTimelineEvents = mockClients
-    .flatMap((c) => c.timeline.map((t) => ({ ...t, clientName: c.name, clientId: c.id })))
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-const upcomingReviews = mockClients
-    .filter((c) => c.nextReviewDate)
-    .map((c) => ({ client: c, daysUntil: daysUntil(c.nextReviewDate) }))
-    .filter((r) => r.daysUntil > 0 && r.daysUntil <= 90)
-    .sort((a, b) => a.daysUntil - b.daysUntil);
-
-const totalContractValue = mockClients
-    .filter((c) => c.engagementStatus === "Active")
-    .reduce((sum, c) => {
-        const match = c.contractValue.match(/[\d,]+/);
-        return sum + (match ? parseInt(match[0].replace(/,/g, "")) : 0);
-    }, 0);
-
-const totalOutstanding = mockClients.reduce((sum, c) => {
-    const match = c.outstandingPayments.match(/[\d,.]+/);
-    return sum + (match ? parseFloat(match[0].replace(/,/g, "")) : 0);
-}, 0);
-
-const avgHealthScore = Math.round(
-    mockClients.filter((c) => c.engagementStatus === "Active").reduce((s, c) => s + c.clientHealthScore, 0) /
-    activeClients.length
-);
-
-const avgSatisfaction = Math.round(
-    mockClients.filter((c) => c.engagementStatus === "Active").reduce((s, c) => s + c.satisfactionScore, 0) /
-    activeClients.length
-);
-
-// Advisor workload
-const advisorWorkload = advisors.map((name) => {
-    const clients = mockClients.filter((c) => c.assignedAdvisors.includes(name) && c.engagementStatus === "Active");
-    const tasks = allTasks.filter((t) => t.assignedTo === name && t.status !== "Completed");
-    const highRisk = clients.filter((c) => c.riskLevel === "High").length;
-    return { name, clientCount: clients.length, taskCount: tasks.length, highRisk };
-});
-
 export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateToTasks }: DashboardProps) {
+    const { clients } = useApi();
     const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month">("week");
     const [showReportModal, setShowReportModal] = useState(false);
     const [showAllAlertsModal, setShowAllAlertsModal] = useState(false);
-    const [selectedAlert, setSelectedAlert] = useState<(typeof allAlerts)[0] | null>(null);
-    const [selectedTask, setSelectedTask] = useState<(typeof allTasks)[0] | null>(null);
+    const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
+    const [selectedTask, setSelectedTask] = useState<any | null>(null);
     const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
     const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<Set<string>>(new Set());
     const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
     const [inProgressOverrides, setInProgressOverrides] = useState<Set<string>>(new Set());
+
+    /* ---- computed data ---- */
+    const activeClients = clients.filter((c) => c.engagementStatus === "Active");
+    const onHoldClients = clients.filter((c) => c.engagementStatus === "On Hold");
+    const completedClients = clients.filter((c) => c.engagementStatus === "Completed");
+    const highRiskClients = clients.filter((c) => c.riskLevel === "High");
+    const mediumRiskClients = clients.filter((c) => c.riskLevel === "Medium");
+    const lowRiskClients = clients.filter((c) => c.riskLevel === "Low");
+    const complianceAttention = clients.filter((c) => c.complianceStatus === "Attention Needed");
+
+    const allTasks = clients.flatMap((c) => c.tasks.map((t) => ({ ...t, clientName: c.name, clientId: c.id })));
+    const overdueTasks = allTasks.filter((t) => t.status === "Overdue");
+    const inProgressTasks = allTasks.filter((t) => t.status === "In Progress");
+    const openTasks = allTasks.filter((t) => t.status === "Open");
+
+    const allAlerts = clients.flatMap((c) => c.alerts.map((a) => ({ ...a, clientName: c.name, clientId: c.id })));
+    const criticalAlerts = allAlerts.filter((a) => a.severity === "Critical");
+
+    const allTimelineEvents = clients
+        .flatMap((c) => c.timeline.map((t) => ({ ...t, clientName: c.name, clientId: c.id })))
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    const upcomingReviews = clients
+        .filter((c) => c.nextReviewDate)
+        .map((c) => ({ client: c, daysUntil: daysUntil(c.nextReviewDate) }))
+        .filter((r) => r.daysUntil > 0 && r.daysUntil <= 90)
+        .sort((a, b) => a.daysUntil - b.daysUntil);
+
+    const totalContractValue = clients
+        .filter((c) => c.engagementStatus === "Active")
+        .reduce((sum, c) => {
+            const match = c.contractValue.match(/[\d,]+/);
+            return sum + (match ? parseInt(match[0].replace(/,/g, "")) : 0);
+        }, 0);
+
+    const totalOutstanding = clients.reduce((sum, c) => {
+        const match = c.outstandingPayments.match(/[\d,.]+/);
+        return sum + (match ? parseFloat(match[0].replace(/,/g, "")) : 0);
+    }, 0);
+
+    const avgHealthScore = activeClients.length > 0 ? Math.round(
+        clients.filter((c) => c.engagementStatus === "Active").reduce((s, c) => s + c.clientHealthScore, 0) /
+        activeClients.length
+    ) : 0;
+
+    const avgSatisfaction = activeClients.length > 0 ? Math.round(
+        clients.filter((c) => c.engagementStatus === "Active").reduce((s, c) => s + c.satisfactionScore, 0) /
+        activeClients.length
+    ) : 0;
+
+    // Advisor workload
+    const advisorWorkload = advisors.map((name) => {
+        const advisorClientsList = clients.filter((c) => c.assignedAdvisors.includes(name) && c.engagementStatus === "Active");
+        const tasks = allTasks.filter((t) => t.assignedTo === name && t.status !== "Completed");
+        const highRisk = advisorClientsList.filter((c) => c.riskLevel === "High").length;
+        return { name, clientCount: advisorClientsList.length, taskCount: tasks.length, highRisk };
+    });
 
     const visibleAlerts = allAlerts.filter((a) => !dismissedAlerts.has(a.id + a.clientId));
 
@@ -359,7 +362,7 @@ export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateT
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {mockClients
+                                        {clients
                                             .sort((a, b) => a.clientHealthScore - b.clientHealthScore)
                                             .map((client) => {
                                                 const clientOverdue = client.tasks.filter((t) => t.status === "Overdue").length;
@@ -501,7 +504,7 @@ export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateT
                             <div className="p-5">
                                 <div className="grid grid-cols-4 gap-4 mb-4">
                                     <div className="text-center p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                                        <p className="text-[22px] font-[800] text-emerald-700">{mockClients.filter((c) => c.complianceStatus === "Good").length}</p>
+                                        <p className="text-[22px] font-[800] text-emerald-700">{clients.filter((c) => c.complianceStatus === "Good").length}</p>
                                         <p className="text-[11px] text-emerald-600 font-[600]">Fully Compliant</p>
                                     </div>
                                     <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-200">
@@ -509,11 +512,11 @@ export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateT
                                         <p className="text-[11px] text-amber-600 font-[600]">Attention Needed</p>
                                     </div>
                                     <div className="text-center p-3 rounded-lg bg-red-50 border border-red-200">
-                                        <p className="text-[22px] font-[800] text-red-700">{mockClients.reduce((s, c) => s + c.complianceGaps.length, 0)}</p>
+                                        <p className="text-[22px] font-[800] text-red-700">{clients.reduce((s, c) => s + c.complianceGaps.length, 0)}</p>
                                         <p className="text-[11px] text-red-600 font-[600]">Open Gaps</p>
                                     </div>
                                     <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">
-                                        <p className="text-[22px] font-[800] text-blue-700">{Math.round(mockClients.filter((c) => c.engagementStatus === "Active").reduce((s, c) => s + c.auditReadinessScore, 0) / activeClients.length)}%</p>
+                                        <p className="text-[22px] font-[800] text-blue-700">{activeClients.length > 0 ? Math.round(clients.filter((c) => c.engagementStatus === "Active").reduce((s, c) => s + c.auditReadinessScore, 0) / activeClients.length) : 0}%</p>
                                         <p className="text-[11px] text-blue-600 font-[600]">Avg Audit Readiness</p>
                                     </div>
                                 </div>
@@ -620,7 +623,7 @@ export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateT
                                         <span className="text-[12px] font-[700] text-red-600">{highRiskClients.length}</span>
                                     </div>
                                     <div className="h-3 bg-[#F3F4F6] rounded-full overflow-hidden">
-                                        <div className="h-full bg-red-500 rounded-full" style={{ width: `${(highRiskClients.length / mockClients.length) * 100}%` }} />
+                                        <div className="h-full bg-red-500 rounded-full" style={{ width: `${clients.length > 0 ? (highRiskClients.length / clients.length) * 100 : 0}%` }} />
                                     </div>
                                 </div>
                                 <div>
@@ -629,7 +632,7 @@ export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateT
                                         <span className="text-[12px] font-[700] text-amber-600">{mediumRiskClients.length}</span>
                                     </div>
                                     <div className="h-3 bg-[#F3F4F6] rounded-full overflow-hidden">
-                                        <div className="h-full bg-amber-500 rounded-full" style={{ width: `${(mediumRiskClients.length / mockClients.length) * 100}%` }} />
+                                        <div className="h-full bg-amber-500 rounded-full" style={{ width: `${clients.length > 0 ? (mediumRiskClients.length / clients.length) * 100 : 0}%` }} />
                                     </div>
                                 </div>
                                 <div>
@@ -638,12 +641,12 @@ export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateT
                                         <span className="text-[12px] font-[700] text-emerald-600">{lowRiskClients.length}</span>
                                     </div>
                                     <div className="h-3 bg-[#F3F4F6] rounded-full overflow-hidden">
-                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(lowRiskClients.length / mockClients.length) * 100}%` }} />
+                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${clients.length > 0 ? (lowRiskClients.length / clients.length) * 100 : 0}%` }} />
                                     </div>
                                 </div>
                                 <div className="pt-2 border-t border-[#F3F4F6]">
                                     <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                                        <span>Total clients: {mockClients.length}</span>
+                                        <span>Total clients: {clients.length}</span>
                                         <span>Active: {activeClients.length} &middot; On Hold: {onHoldClients.length} &middot; Completed: {completedClients.length}</span>
                                     </div>
                                 </div>
@@ -742,7 +745,7 @@ export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateT
                                 <div className="pt-2 border-t border-[#F3F4F6]">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[11px] text-[#6B7280]">Avg NPS</span>
-                                        <span className="text-[14px] font-[800] text-foreground">{(mockClients.filter((c) => c.engagementStatus === "Active").reduce((s, c) => s + c.npsRating, 0) / activeClients.length).toFixed(1)}/10</span>
+                                        <span className="text-[14px] font-[800] text-foreground">{activeClients.length > 0 ? (clients.filter((c) => c.engagementStatus === "Active").reduce((s, c) => s + c.npsRating, 0) / activeClients.length).toFixed(1) : "0.0"}/10</span>
                                     </div>
                                 </div>
                             </div>

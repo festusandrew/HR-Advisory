@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { advisors, industries, locations } from "./mock-data";
 import type { Client, Task, TaskCategory, Document as DocType } from "./mock-data";
+import { useApi } from "../context/ApiContext";
 
 /* ------------------------------------------------------------------ */
 /*  Shared                                                             */
@@ -104,14 +105,14 @@ const commTypes = ["Email", "Meeting", "Call", "Advisory Update", "Client Reques
 /* ================================================================== */
 /*  1. ADD CLIENT MODAL                                                */
 /* ================================================================== */
-export function AddClientModal({ onClose, onAdd }: { onClose: () => void; onAdd: (data: any) => void }) {
+export function AddClientModal({ onClose, onAdd, clientToEdit }: { onClose: () => void; onAdd: (data: any) => void; clientToEdit?: Client }) {
     const [step, setStep] = useState<1 | 2 | "done">(1);
     const [form, setForm] = useState({
-        name: "", tradingName: "", industry: industries[0], location: locations[0],
-        companySize: "", contractType: "Retainer", riskLevel: "Medium",
-        engagementStatus: "Active", assignedAdvisors: [advisors[0]],
-        businessStructure: "Private Limited Company (Ltd)",
-        contactName: "", contactEmail: "", contactPhone: "", contactJobTitle: "",
+        name: clientToEdit?.name || "", tradingName: clientToEdit?.tradingName || "", industry: clientToEdit?.industry || industries[0], location: clientToEdit?.location || locations[0],
+        companySize: clientToEdit?.companySize || "", contractType: clientToEdit?.contractType || "Retainer", riskLevel: clientToEdit?.riskLevel || "Medium",
+        engagementStatus: clientToEdit?.engagementStatus || "Active", assignedAdvisors: clientToEdit?.assignedAdvisors || [advisors[0]],
+        businessStructure: clientToEdit?.businessStructure || "Private Limited Company (Ltd)",
+        contactName: clientToEdit?.contacts?.[0]?.name || "", contactEmail: clientToEdit?.contacts?.[0]?.email || "", contactPhone: clientToEdit?.contacts?.[0]?.phone || "", contactJobTitle: clientToEdit?.contacts?.[0]?.jobTitle || "",
     });
 
     const set = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
@@ -124,7 +125,7 @@ export function AddClientModal({ onClose, onAdd }: { onClose: () => void; onAdd:
     return (
         <Overlay onClose={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl w-[600px] max-h-[90vh] flex flex-col">
-                <ModalHeader icon={UserPlus} iconBg="bg-[#EEF2FF]" iconColor="text-[#4F46E5]" title="Add New Client" subtitle="Register a new client organisation" onClose={onClose} />
+                <ModalHeader icon={clientToEdit ? UserPlus : UserPlus} iconBg="bg-[#EEF2FF]" iconColor="text-[#4F46E5]" title={clientToEdit ? "Edit Client" : "Add New Client"} subtitle={clientToEdit ? "Update client organisation details" : "Register a new client organisation"} onClose={onClose} />
                 <div className="flex-1 overflow-y-auto p-6">
                     {step === 1 && (
                         <div className="space-y-4">
@@ -239,7 +240,9 @@ export function AddClientModal({ onClose, onAdd }: { onClose: () => void; onAdd:
 /* ================================================================== */
 /*  2. CREATE TASK MODAL                                               */
 /* ================================================================== */
-export function CreateTaskModal({ onClose, onAdd, clientName }: { onClose: () => void; onAdd: (data: any) => void; clientName?: string }) {
+export function CreateTaskModal({ onClose, onAdd, clientName }: { onClose: () => void; onAdd: (data: any, selectedClientId?: string) => void; clientName?: string }) {
+    const { clients } = useApi();
+    const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || "");
     const [done, setDone] = useState(false);
     const [form, setForm] = useState({
         title: "", description: "", priority: "Medium" as string, category: "General Advisory" as string,
@@ -247,7 +250,7 @@ export function CreateTaskModal({ onClose, onAdd, clientName }: { onClose: () =>
     });
     const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-    const handleSubmit = () => { onAdd(form); setDone(true); };
+    const handleSubmit = () => { onAdd(form, selectedClientId); setDone(true); };
 
     return (
         <Overlay onClose={onClose}>
@@ -256,6 +259,13 @@ export function CreateTaskModal({ onClose, onAdd, clientName }: { onClose: () =>
                 <div className="flex-1 overflow-y-auto p-6">
                     {!done ? (
                         <div className="space-y-4">
+                            {!clientName && (
+                                <Field label="Select Client" required>
+                                    <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)} className={selectCls}>
+                                        {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                </Field>
+                            )}
                             <Field label="Task Title" required>
                                 <input type="text" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Review GDPR compliance documentation" className={inputCls} />
                             </Field>
@@ -312,7 +322,9 @@ export function CreateTaskModal({ onClose, onAdd, clientName }: { onClose: () =>
 /* ================================================================== */
 /*  3. UPLOAD DOCUMENT MODAL                                           */
 /* ================================================================== */
-export function UploadDocumentModal({ onClose, onAdd, clientName }: { onClose: () => void; onAdd: (data: any) => void; clientName?: string }) {
+export function UploadDocumentModal({ onClose, onAdd, clientName }: { onClose: () => void; onAdd: (data: any, selectedClientId?: string) => void; clientName?: string }) {
+    const { clients } = useApi();
+    const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || "");
     const [done, setDone] = useState(false);
     const [fileName, setFileName] = useState("");
     const [form, setForm] = useState({
@@ -321,7 +333,7 @@ export function UploadDocumentModal({ onClose, onAdd, clientName }: { onClose: (
     });
     const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-    const handleSubmit = () => { onAdd({ ...form, fileName }); setDone(true); };
+    const handleSubmit = () => { onAdd({ ...form, fileName }, selectedClientId); setDone(true); };
 
     return (
         <Overlay onClose={onClose}>
@@ -330,6 +342,13 @@ export function UploadDocumentModal({ onClose, onAdd, clientName }: { onClose: (
                 <div className="flex-1 overflow-y-auto p-6">
                     {!done ? (
                         <div className="space-y-4">
+                            {!clientName && (
+                                <Field label="Select Client" required>
+                                    <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)} className={selectCls}>
+                                        {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                </Field>
+                            )}
                             {/* Drop zone */}
                             <div className="border-2 border-dashed border-[#D1D5DB] rounded-xl p-6 text-center hover:border-[#4F46E5] transition-colors cursor-pointer">
                                 <Upload className="w-8 h-8 text-[#9CA3AF] mx-auto mb-2" />

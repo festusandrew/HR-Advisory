@@ -42,7 +42,9 @@ import {
     AddServiceModal,
     DocumentDetailModal,
     LogInteractionModal,
+    AddClientModal,
 } from "./ClientProfileModals";
+import { useApi } from "../context/ApiContext";
 
 interface ClientProfileProps {
     client: Client;
@@ -155,6 +157,7 @@ function ScoreBar({ score, color }: { score: number; color: string }) {
 }
 
 export function ClientProfile({ client, onBack }: ClientProfileProps) {
+    const { updateClient, deleteClient, addTask, addDocument } = useApi();
     const [activeTab, setActiveTab] = useState<TabKey>("overview");
     const [showCreateTask, setShowCreateTask] = useState(false);
     const [showUploadDoc, setShowUploadDoc] = useState(false);
@@ -162,6 +165,8 @@ export function ClientProfile({ client, onBack }: ClientProfileProps) {
     const [showAddContact, setShowAddContact] = useState(false);
     const [showAddService, setShowAddService] = useState(false);
     const [showLogInteraction, setShowLogInteraction] = useState(false);
+    const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const [showEditClient, setShowEditClient] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState<DocType | null>(null);
 
     const openTasks = client.tasks.filter((t) => t.status !== "Completed").length;
@@ -202,7 +207,7 @@ export function ClientProfile({ client, onBack }: ClientProfileProps) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button className="px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[12px] font-[600] text-[#374151] hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer">
+                        <button onClick={() => setShowEditClient(true)} className="px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[12px] font-[600] text-[#374151] hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer">
                             <Edit className="w-3.5 h-3.5" /> Edit
                         </button>
                         <button onClick={() => setShowAssignAdvisor(true)} className="px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[12px] font-[600] text-[#374151] hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer">
@@ -214,9 +219,58 @@ export function ClientProfile({ client, onBack }: ClientProfileProps) {
                         <button onClick={() => setShowCreateTask(true)} className="px-3 py-1.5 rounded-lg bg-[#4F46E5] text-white text-[12px] font-[600] hover:bg-[#4338CA] flex items-center gap-1.5 cursor-pointer">
                             <Plus className="w-3.5 h-3.5" /> Create Task
                         </button>
-                        <button className="p-1.5 rounded-lg border border-[#E5E7EB] hover:bg-gray-50 cursor-pointer">
-                            <MoreHorizontal className="w-4 h-4 text-[#6B7280]" />
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                                className="p-1.5 rounded-lg border border-[#E5E7EB] hover:bg-gray-50 cursor-pointer flex items-center justify-center"
+                            >
+                                <MoreHorizontal className="w-4 h-4 text-[#6B7280]" />
+                            </button>
+                            {showMoreMenu && (
+                                <div className="absolute right-0 mt-1 w-48 bg-white border border-[#E5E7EB] rounded-lg shadow-lg py-1 z-50">
+                                    <button
+                                        onClick={async () => {
+                                            await updateClient(client.id, { engagementStatus: "Active" });
+                                            setShowMoreMenu(false);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-[12px] text-foreground hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                                    >
+                                        <CircleDot className="w-3.5 h-3.5 text-emerald-500" /> Mark Active
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            await updateClient(client.id, { engagementStatus: "On Hold" });
+                                            setShowMoreMenu(false);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-[12px] text-foreground hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                                    >
+                                        <CircleDot className="w-3.5 h-3.5 text-amber-500" /> Mark On Hold
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            await updateClient(client.id, { engagementStatus: "Completed" });
+                                            setShowMoreMenu(false);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-[12px] text-foreground hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                                    >
+                                        <CircleDot className="w-3.5 h-3.5 text-blue-500" /> Archive / Complete
+                                    </button>
+                                    <div className="border-t border-[#F3F4F6] my-1"></div>
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm("Are you sure you want to delete this client?")) {
+                                                await deleteClient(client.id);
+                                                onBack();
+                                            }
+                                            setShowMoreMenu(false);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-[12px] text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer font-[600]"
+                                    >
+                                        <Archive className="w-3.5 h-3.5" /> Delete Client
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -279,12 +333,87 @@ export function ClientProfile({ client, onBack }: ClientProfileProps) {
             </div>
 
             {/* Modals */}
-            {showCreateTask && <CreateTaskModal onClose={() => setShowCreateTask(false)} onAdd={() => { }} clientName={client.tradingName} />}
-            {showUploadDoc && <UploadDocumentModal onClose={() => setShowUploadDoc(false)} onAdd={() => { }} clientName={client.tradingName} />}
-            {showAssignAdvisor && <AssignAdvisorModal onClose={() => setShowAssignAdvisor(false)} onAssign={() => { }} currentAdvisors={client.assignedAdvisors} />}
-            {showAddContact && <AddContactModal onClose={() => setShowAddContact(false)} onAdd={() => { }} clientName={client.tradingName} />}
-            {showAddService && <AddServiceModal onClose={() => setShowAddService(false)} onAdd={() => { }} clientName={client.tradingName} />}
-            {showLogInteraction && <LogInteractionModal onClose={() => setShowLogInteraction(false)} onAdd={() => { }} clientName={client.tradingName} />}
+            {showCreateTask && (
+                <CreateTaskModal
+                    onClose={() => setShowCreateTask(false)}
+                    onAdd={async (taskData) => {
+                        await addTask(client.id, taskData);
+                        setShowCreateTask(false);
+                    }}
+                    clientName={client.tradingName}
+                />
+            )}
+            {showUploadDoc && (
+                <UploadDocumentModal
+                    onClose={() => setShowUploadDoc(false)}
+                    onAdd={async (docData) => {
+                        await addDocument(client.id, docData);
+                        setShowUploadDoc(false);
+                    }}
+                    clientName={client.tradingName}
+                />
+            )}
+            {showAssignAdvisor && (
+                <AssignAdvisorModal
+                    onClose={() => setShowAssignAdvisor(false)}
+                    onAssign={async (advisorsList) => {
+                        await updateClient(client.id, { assignedAdvisors: advisorsList });
+                        setShowAssignAdvisor(false);
+                    }}
+                    currentAdvisors={client.assignedAdvisors}
+                />
+            )}
+            {showAddContact && (
+                <AddContactModal
+                    onClose={() => setShowAddContact(false)}
+                    onAdd={async (contactData) => {
+                        const updatedContacts = [...(client.contacts || []), contactData];
+                        await updateClient(client.id, { contacts: updatedContacts });
+                        setShowAddContact(false);
+                    }}
+                    clientName={client.tradingName}
+                />
+            )}
+            {showAddService && (
+                <AddServiceModal
+                    onClose={() => setShowAddService(false)}
+                    onAdd={async (serviceData) => {
+                        const updatedServices = [...(client.services || []), serviceData];
+                        await updateClient(client.id, { services: updatedServices });
+                        setShowAddService(false);
+                    }}
+                    clientName={client.tradingName}
+                />
+            )}
+            {showLogInteraction && (
+                <LogInteractionModal
+                    onClose={() => setShowLogInteraction(false)}
+                    onAdd={async (interactionData) => {
+                        const updatedComms = [
+                            {
+                                id: `C-${Math.floor(100 + Math.random() * 900)}`,
+                                date: new Date().toISOString().split("T")[0],
+                                timestamp: new Date().toISOString(),
+                                ...interactionData,
+                            },
+                            ...(client.communications || []),
+                        ];
+                        await updateClient(client.id, { communications: updatedComms });
+                        setShowLogInteraction(false);
+                    }}
+                    clientName={client.tradingName}
+                />
+            )}
+            {showEditClient && (
+                <AddClientModal
+                    onClose={() => setShowEditClient(false)}
+                    onAdd={async (formData) => {
+                        await updateClient(client.id, formData);
+                        setShowEditClient(false);
+                    }}
+                    clientToEdit={client}
+                />
+            )}
             {selectedDoc && <DocumentDetailModal doc={selectedDoc} clientName={client.tradingName} onClose={() => setSelectedDoc(null)} />}
         </div>
     );

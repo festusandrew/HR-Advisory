@@ -62,8 +62,8 @@ import {
     LineChart,
     Line,
 } from "recharts";
-import { mockClients } from "./mock-data";
 import type { Client } from "./mock-data";
+import { useApi } from "../context/ApiContext";
 
 /* ===== Constants ===== */
 const NOW = new Date("2026-02-06T12:00:00Z");
@@ -741,6 +741,7 @@ function getAuditFindings(audit: AuditRecord): AuditFinding[] {
 
 /* ===== Schedule Audit Modal ===== */
 function ScheduleAuditModal({ onClose }: { onClose: () => void }) {
+    const { clients } = useApi();
     const [done, setDone] = useState(false);
     const [title, setTitle] = useState("");
     const [type, setType] = useState("Workplace Relations Compliance");
@@ -804,7 +805,7 @@ function ScheduleAuditModal({ onClose }: { onClose: () => void }) {
                                     <label className="text-[12px] font-[600] text-foreground block mb-1.5">Client <span className="text-red-500">*</span></label>
                                     <select value={client} onChange={(e) => setClient(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-[13px] focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer">
                                         <option value="">Select client...</option>
-                                        {mockClients.map((c) => <option key={c.id} value={c.name}>{c.tradingName}</option>)}
+                                        {clients.map((c) => <option key={c.id} value={c.name}>{c.tradingName}</option>)}
                                     </select>
                                 </div>
                                 <div>
@@ -837,7 +838,7 @@ function ScheduleAuditModal({ onClose }: { onClose: () => void }) {
                                     <p className="text-[10px] font-[700] text-muted-foreground uppercase tracking-wider mb-2">Audit Summary</p>
                                     <div className="space-y-1 text-[12px]">
                                         <div className="flex justify-between"><span className="text-muted-foreground">Title</span><span className="font-[600] text-foreground">{title}</span></div>
-                                        <div className="flex justify-between"><span className="text-muted-foreground">Client</span><span className="font-[500] text-foreground">{mockClients.find(c => c.name === client)?.tradingName || client}</span></div>
+                                        <div className="flex justify-between"><span className="text-muted-foreground">Client</span><span className="font-[500] text-foreground">{clients.find(c => c.name === client)?.tradingName || client}</span></div>
                                         <div className="flex justify-between"><span className="text-muted-foreground">Auditor</span><span className="font-[500] text-foreground">{auditor}</span></div>
                                         <div className="flex justify-between"><span className="text-muted-foreground">Date</span><span className="font-[500] text-indigo-600">{formatDate(scheduledDate)}</span></div>
                                     </div>
@@ -847,7 +848,7 @@ function ScheduleAuditModal({ onClose }: { onClose: () => void }) {
                     ) : (
                         <div className="py-10 text-center space-y-4">
                             <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto"><CheckCircle2 className="w-8 h-8 text-emerald-600" /></div>
-                            <div><p className="text-[16px] font-[700] text-foreground">Audit Scheduled</p><p className="text-[13px] text-muted-foreground mt-1.5"><span className="font-[600] text-foreground">{title}</span></p><p className="text-[12px] text-muted-foreground mt-0.5">{auditor} · {formatDate(scheduledDate)} · {mockClients.find(c => c.name === client)?.tradingName || client}</p></div>
+                            <div><p className="text-[16px] font-[700] text-foreground">Audit Scheduled</p><p className="text-[13px] text-muted-foreground mt-1.5"><span className="font-[600] text-foreground">{title}</span></p><p className="text-[12px] text-muted-foreground mt-0.5">{auditor} · {formatDate(scheduledDate)} · {clients.find(c => c.name === client)?.tradingName || client}</p></div>
                         </div>
                     )}
                 </div>
@@ -868,6 +869,7 @@ function ScheduleAuditModal({ onClose }: { onClose: () => void }) {
 
 /* ===== Add / Edit Requirement Modal ===== */
 function RequirementModal({ existing, onClose }: { existing?: ComplianceRequirement | null; onClose: () => void }) {
+    const { clients } = useApi();
     const isEdit = !!existing;
     const [done, setDone] = useState(false);
     const [title, setTitle] = useState(existing?.title || "");
@@ -929,7 +931,7 @@ function RequirementModal({ existing, onClose }: { existing?: ComplianceRequirem
                                     <label className="text-[12px] font-[600] text-foreground block mb-1.5">Client <span className="text-red-500">*</span></label>
                                     <select value={client} onChange={(e) => setClient(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-input bg-background text-[13px] focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer">
                                         <option value="">Select client...</option>
-                                        {mockClients.map((c) => <option key={c.id} value={c.name}>{c.tradingName}</option>)}
+                                        {clients.map((c) => <option key={c.id} value={c.name}>{c.tradingName}</option>)}
                                     </select>
                                 </div>
                                 <div>
@@ -1205,6 +1207,7 @@ interface CompliancePageProps {
 }
 
 export function CompliancePage({ onNavigateToClient }: CompliancePageProps) {
+    const { clients } = useApi();
     const [activeTab, setActiveTab] = useState<
         "overview" | "requirements" | "audits" | "gaps" | "risk" | "reports" | "legislation"
     >("overview");
@@ -1286,7 +1289,7 @@ export function CompliancePage({ onNavigateToClient }: CompliancePageProps) {
         AUDIT_RECORDS.filter((a) => a.score).length
     );
 
-    const clients = ["All", ...Array.from(new Set(mockClients.map((c) => c.name)))];
+    const clientFilterList = ["All", ...Array.from(new Set(clients.map((c) => c.name)))];
     const categories: (ComplianceCategory | "All")[] = [
         "All",
         "GDPR & Data Protection",
@@ -1310,7 +1313,7 @@ export function CompliancePage({ onNavigateToClient }: CompliancePageProps) {
     };
 
     const handleNavigateToClient = (clientId: string) => {
-        const client = mockClients.find((c) => c.id === clientId);
+        const client = clients.find((c) => c.id === clientId);
         if (client && onNavigateToClient) {
             onNavigateToClient(client);
         }
@@ -1488,7 +1491,7 @@ export function CompliancePage({ onNavigateToClient }: CompliancePageProps) {
                                     onChange={(e) => setSelectedClient(e.target.value)}
                                     className="w-full h-9 px-3 rounded-lg border border-input bg-background text-[13px] focus:outline-none focus:ring-2 focus:ring-ring"
                                 >
-                                    {clients.map((client) => (
+                                    {clientFilterList.map((client) => (
                                         <option key={client} value={client}>
                                             {client}
                                         </option>
@@ -1738,7 +1741,7 @@ export function CompliancePage({ onNavigateToClient }: CompliancePageProps) {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-border">
-                                                {mockClients.slice(0, 3).map((client) => {
+                                                {clients.slice(0, 3).map((client) => {
                                                     const clientReqs = COMPLIANCE_REQUIREMENTS.filter(
                                                         (r) => r.clientId === client.id
                                                     );

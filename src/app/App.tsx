@@ -13,29 +13,33 @@ import { IntegrationsPage } from "./components/IntegrationsPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { HelpCentrePage } from "./components/HelpCentrePage";
 import type { Client } from "./components/mock-data";
+import { useApi } from "./context/ApiContext";
 
 export default function App() {
+    const { clients } = useApi();
     const [activeView, setActiveView] = useState("dashboard");
-    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [searchValue, setSearchValue] = useState("");
+
+    const selectedClient = clients.find((c) => c.id === selectedClientId) || null;
 
     const handleNavigate = (view: string) => {
         setActiveView(view);
-        setSelectedClient(null);
+        setSelectedClientId(null);
     };
 
     const handleSelectClient = (client: Client) => {
         setActiveView("clients");
-        setSelectedClient(client);
+        setSelectedClientId(client.id);
     };
 
     const handleBackToDirectory = () => {
-        setSelectedClient(null);
+        setSelectedClientId(null);
     };
 
     const handleNavigateToClients = () => {
         setActiveView("clients");
-        setSelectedClient(null);
+        setSelectedClientId(null);
     };
 
     const breadcrumbs = selectedClient

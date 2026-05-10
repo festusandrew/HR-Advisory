@@ -32,8 +32,9 @@ import {
     FileWarning,
     Layers,
 } from "lucide-react";
-import { mockClients } from "./mock-data";
 import type { Client, Document } from "./mock-data";
+import { useApi } from "../context/ApiContext";
+import { UploadDocumentModal } from "./ClientProfileModals";
 
 /* ===== Constants ===== */
 const NOW = new Date("2026-02-06T12:00:00Z");
@@ -177,92 +178,7 @@ function FilterDropdown({
     );
 }
 
-/* ===== Upload Document Modal ===== */
-function UploadDocumentModal({ onClose }: { onClose: () => void }) {
-    return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-[580px] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E7EB]">
-                    <h3 className="text-[16px] font-[700] text-foreground">Upload Document</h3>
-                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        <X className="w-4 h-4 text-[#6B7280]" />
-                    </button>
-                </div>
-                <div className="p-6 space-y-4">
-                    {/* Drop zone */}
-                    <div className="border-2 border-dashed border-[#D1D5DB] rounded-xl p-8 text-center hover:border-[#4F46E5] hover:bg-[#EEF2FF]/30 transition-colors cursor-pointer">
-                        <Upload className="w-8 h-8 text-[#9CA3AF] mx-auto mb-2" />
-                        <p className="text-[13px] font-[600] text-[#4B5563]">Click to upload or drag and drop</p>
-                        <p className="text-[11px] text-muted-foreground mt-1">PDF, DOCX, XLSX, PPTX up to 25MB</p>
-                    </div>
-                    <div>
-                        <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Document Name *</label>
-                        <input className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5]/40" placeholder="e.g. WRC Compliance Audit Report Q1 2026" />
-                    </div>
-                    <div>
-                        <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Description</label>
-                        <textarea className="w-full h-16 px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5]/40" placeholder="Brief description, purpose, and relevant regulatory context..." />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Client *</label>
-                            <select className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 appearance-none cursor-pointer">
-                                <option value="">Select client...</option>
-                                {mockClients.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.tradingName}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Document Type *</label>
-                            <select className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 appearance-none cursor-pointer">
-                                <option value="">Select type...</option>
-                                {Object.keys(DOC_TYPE_CONFIG).map((t) => (
-                                    <option key={t} value={t}>
-                                        {t}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Version *</label>
-                            <input className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20" placeholder="e.g. 1.0" />
-                        </div>
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Expiry Date</label>
-                            <input type="date" className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 cursor-pointer" />
-                        </div>
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Confidentiality</label>
-                            <select className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 appearance-none cursor-pointer">
-                                <option value="Internal">Internal</option>
-                                <option value="Confidential">Confidential</option>
-                                <option value="Restricted">Restricted</option>
-                                <option value="Public">Public</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Regulatory Reference</label>
-                        <input className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20" placeholder="e.g. GDPR Article 35 / Safety, Health and Welfare at Work Act 2005" />
-                    </div>
-                </div>
-                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-[#E5E7EB]">
-                    <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#E5E7EB] text-[12px] font-[600] text-[#4B5563] hover:bg-gray-50 cursor-pointer">
-                        Cancel
-                    </button>
-                    <button onClick={onClose} className="px-4 py-2 rounded-lg bg-[#4F46E5] text-white text-[12px] font-[600] hover:bg-[#4338CA] cursor-pointer">
-                        Upload Document
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
+
 
 /* ===== Document Preview Modal ===== */
 function DocumentPreviewModal({ doc, onClose }: { doc: EnrichedDocument; onClose: () => void }) {
@@ -610,9 +526,10 @@ function DocumentDetailPanel({
     onClose: () => void;
     onNavigateToClient: (client: Client) => void;
 }) {
+    const { clients } = useApi();
     const conf = getDocTypeConf(doc.type);
     const TypeIcon = conf.icon;
-    const client = mockClients.find((c) => c.id === doc.clientId);
+    const client = clients.find((c) => c.id === doc.clientId);
     const expiryDays = doc.expiryDate ? daysUntil(doc.expiryDate) : null;
     const [showPreview, setShowPreview] = useState(false);
     const [showUploadVersion, setShowUploadVersion] = useState(false);
@@ -821,6 +738,7 @@ interface DocumentsPageProps {
 }
 
 export function DocumentsPage({ onNavigateToClient }: DocumentsPageProps) {
+    const { clients, addDocument } = useApi();
     const [activeTab, setActiveTab] = useState<TabId>("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState("");
@@ -835,7 +753,7 @@ export function DocumentsPage({ onNavigateToClient }: DocumentsPageProps) {
 
     // Enrich documents
     const allDocs: EnrichedDocument[] = useMemo(() => {
-        return mockClients.flatMap((c) =>
+        return clients.flatMap((c) =>
             c.documents.map((d) => ({
                 ...d,
                 clientId: c.id,
@@ -846,7 +764,7 @@ export function DocumentsPage({ onNavigateToClient }: DocumentsPageProps) {
                 clientRiskLevel: c.riskLevel,
             }))
         );
-    }, []);
+    }, [clients]);
 
     // Active filter count
     const activeFilterCount = [filterType, filterClient, filterUploadedBy, filterConfidentiality].filter(Boolean).length;
@@ -976,7 +894,7 @@ export function DocumentsPage({ onNavigateToClient }: DocumentsPageProps) {
         });
     };
 
-    const clientNames = useMemo(() => [...new Set(mockClients.map((c) => c.tradingName))], []);
+    const clientNames = useMemo(() => [...new Set(clients.map((c) => c.tradingName))], [clients]);
     const uploaders = useMemo(() => [...new Set(allDocs.map((d) => d.uploadedBy))], [allDocs]);
     const docTypes = useMemo(() => [...new Set(allDocs.map((d) => d.type))], [allDocs]);
 
@@ -1348,7 +1266,17 @@ export function DocumentsPage({ onNavigateToClient }: DocumentsPageProps) {
             {selectedDoc && (
                 <DocumentDetailPanel doc={selectedDoc} onClose={() => setSelectedDoc(null)} onNavigateToClient={onNavigateToClient} />
             )}
-            {showUploadModal && <UploadDocumentModal onClose={() => setShowUploadModal(false)} />}
+            {showUploadModal && (
+                <UploadDocumentModal
+                    onClose={() => setShowUploadModal(false)}
+                    onAdd={async (docData, selectedClientId) => {
+                        if (selectedClientId) {
+                            await addDocument(selectedClientId, docData);
+                        }
+                        setShowUploadModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 }

@@ -20,8 +20,9 @@ import {
     Printer,
     Activity,
 } from "lucide-react";
-import { mockClients, advisors } from "./mock-data";
+import { advisors } from "./mock-data";
 import type { Task, Alert, Client } from "./mock-data";
+import { useApi } from "../context/ApiContext";
 
 /* ------------------------------------------------------------------ */
 /*  Shared helpers                                                     */
@@ -123,6 +124,7 @@ const reportFormats = [
 ];
 
 export function GenerateReportModal({ onClose }: { onClose: () => void }) {
+    const { clients } = useApi();
     const [reportType, setReportType] = useState(reportTypes[0]);
     const [selectedClient, setSelectedClient] = useState("all");
     const [dateFrom, setDateFrom] = useState("2026-01-01");
@@ -187,7 +189,7 @@ export function GenerateReportModal({ onClose }: { onClose: () => void }) {
                                     className="w-full border border-[#D1D5DB] rounded-lg px-3 py-2 text-[13px] text-foreground bg-white focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5]"
                                 >
                                     <option value="all">All Clients</option>
-                                    {mockClients.map((c) => (
+                                    {clients.map((c) => (
                                         <option key={c.id} value={c.id}>{c.tradingName}</option>
                                     ))}
                                 </select>
@@ -262,7 +264,7 @@ export function GenerateReportModal({ onClose }: { onClose: () => void }) {
                                 <p className="text-[11px] font-[600] text-[#6B7280] uppercase tracking-wider mb-2">Report Preview</p>
                                 <div className="space-y-1 text-[12px] text-[#4B5563]">
                                     <p><span className="font-[600] text-foreground">Type:</span> {reportType}</p>
-                                    <p><span className="font-[600] text-foreground">Scope:</span> {selectedClient === "all" ? "All Clients" : mockClients.find((c) => c.id === selectedClient)?.tradingName}</p>
+                                    <p><span className="font-[600] text-foreground">Scope:</span> {selectedClient === "all" ? "All Clients" : clients.find((c) => c.id === selectedClient)?.tradingName}</p>
                                     <p><span className="font-[600] text-foreground">Period:</span> {formatDate(dateFrom)} — {formatDate(dateTo)}</p>
                                     <p><span className="font-[600] text-foreground">Format:</span> {format.toUpperCase()}</p>
                                 </div>
@@ -352,6 +354,7 @@ interface AllAlertsModalProps {
 }
 
 export function AllAlertsModal({ alerts, onClose, onSelectAlert, onNavigateToClient }: AllAlertsModalProps) {
+    const { clients } = useApi();
     const [filterSeverity, setFilterSeverity] = useState<string>("all");
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -437,7 +440,7 @@ export function AllAlertsModal({ alerts, onClose, onSelectAlert, onNavigateToCli
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                const client = mockClients.find((c) => c.id === alert.clientId);
+                                                const client = clients.find((c) => c.id === alert.clientId);
                                                 if (client) { onClose(); onNavigateToClient(client); }
                                             }}
                                             className="text-[10px] font-[600] text-[#4F46E5] hover:underline flex items-center gap-1 cursor-pointer"
@@ -478,9 +481,10 @@ interface AlertDetailModalProps {
 }
 
 export function AlertDetailModal({ alert, onClose, onNavigateToClient, onDismiss, onAcknowledge }: AlertDetailModalProps) {
+    const { clients } = useApi();
     const [acknowledged, setAcknowledged] = useState(false);
     const [dismissed, setDismissed] = useState(false);
-    const client = mockClients.find((c) => c.id === alert.clientId);
+    const client = clients.find((c) => c.id === alert.clientId);
 
     const handleAcknowledge = () => {
         setAcknowledged(true);
@@ -633,10 +637,11 @@ interface TaskDetailModalProps {
 }
 
 export function TaskDetailModal({ task, onClose, onNavigateToClient, onStatusChange }: TaskDetailModalProps) {
+    const { clients } = useApi();
     const [status, setStatus] = useState(task.status);
     const [reassigning, setReassigning] = useState(false);
     const [assignee, setAssignee] = useState(task.assignedTo);
-    const client = mockClients.find((c) => c.id === task.clientId);
+    const client = clients.find((c) => c.id === task.clientId);
     const dueDays = daysUntil(task.dueDate);
     const isOverdue = task.status === "Overdue";
 

@@ -45,8 +45,8 @@ import {
     AreaChart,
     Area,
 } from "recharts";
-import { mockClients } from "./mock-data";
 import type { Client } from "./mock-data";
+import { useApi } from "../context/ApiContext";
 
 /* ===== Constants ===== */
 const NOW = new Date("2026-02-06T12:00:00Z");
@@ -308,9 +308,8 @@ const SCHEDULED_REPORTS = [
     { templateId: "RPT-15", nextRun: "2026-03-31T17:00:00Z", frequency: "Quarterly", recipient: "Aoife Brennan" },
 ];
 
-/* ===== Chart Data (derived from mockClients) ===== */
-function buildChartData() {
-    const clients = mockClients;
+/* ===== Chart Data ===== */
+function buildChartData(clients: Client[]) {
 
     // Client Health Scores
     const clientHealth = clients
@@ -1128,6 +1127,7 @@ interface ReportsPageProps {
 }
 
 export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
+    const { clients } = useApi();
     const [activeTab, setActiveTab] = useState<TabId>("overview");
     const [searchQuery, setSearchQuery] = useState("");
     const [filterCategory, setFilterCategory] = useState("");
@@ -1136,7 +1136,7 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
     const [showManageSchedules, setShowManageSchedules] = useState(false);
     const [showRunAllDue, setShowRunAllDue] = useState(false);
 
-    const chartData = useMemo(() => buildChartData(), []);
+    const chartData = useMemo(() => buildChartData(clients), [clients]);
 
     // Computed stats
     const stats = useMemo(() => {
@@ -1146,13 +1146,13 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
         const complianceDue = REPORT_TEMPLATES.filter(
             (t) => t.category === "Compliance & Regulatory" && t.nextDue && daysUntil(t.nextDue) <= 30 && daysUntil(t.nextDue) >= 0
         ).length;
-        const clientCoverage = mockClients.filter((c) => c.engagementStatus !== "Completed").length;
-        const avgAudit = Math.round(
-            mockClients.filter((c) => c.engagementStatus !== "Completed").reduce((sum, c) => sum + c.auditReadinessScore, 0) /
-            mockClients.filter((c) => c.engagementStatus !== "Completed").length
-        );
+        const activeClientsList = clients.filter((c) => c.engagementStatus !== "Completed");
+        const clientCoverage = activeClientsList.length;
+        const avgAudit = clientCoverage > 0 ? Math.round(
+            activeClientsList.reduce((sum, c) => sum + c.auditReadinessScore, 0) / clientCoverage
+        ) : 0;
         return { totalGenerated, scheduledCount, thisMonthExports, complianceDue, clientCoverage, avgAudit };
-    }, []);
+    }, [clients]);
 
     // Filtered templates
     const filteredTemplates = useMemo(() => {
@@ -1204,7 +1204,7 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
                     <div>
                         <h1 className="text-[22px] font-[800] text-foreground">Reports & Analytics</h1>
                         <p className="text-[13px] text-muted-foreground mt-0.5">
-                            Friday, 6 February 2026 &middot; 12:00 IST &middot; Advisory reporting across {mockClients.length} client engagements
+                            Friday, 6 February 2026 &middot; 12:00 IST &middot; Advisory reporting across {clients.length} client engagements
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1555,7 +1555,7 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {mockClients
+                                            {clients
                                                 .filter((c) => c.engagementStatus !== "Completed")
                                                 .sort((a, b) => b.clientHealthScore - a.clientHealthScore)
                                                 .map((c) => (
@@ -1642,7 +1642,7 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
                                     <h3 className="text-[14px] font-[700] text-foreground mb-1">Compliance Status</h3>
                                     <p className="text-[11px] text-muted-foreground mb-4">Good vs. Attention Needed by client</p>
                                     <div className="space-y-2.5">
-                                        {mockClients.filter((c) => c.engagementStatus !== "Completed").map((c) => (
+                                        {clients.filter((c) => c.engagementStatus !== "Completed").map((c) => (
                                             <div key={c.id} className="flex items-center gap-3">
                                                 <span className="text-[11px] font-[500] text-[#4B5563] w-[120px] truncate">{c.tradingName}</span>
                                                 <div className="flex-1 h-5 bg-[#F3F4F6] rounded-full overflow-hidden">
@@ -1660,7 +1660,7 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
                                     <h3 className="text-[14px] font-[700] text-foreground mb-1">Compliance Gaps Summary</h3>
                                     <p className="text-[11px] text-muted-foreground mb-4">Outstanding gaps by client</p>
                                     <div className="space-y-2">
-                                        {mockClients.filter((c) => c.complianceGaps.length > 0).map((c) => (
+                                        {clients.filter((c) => c.complianceGaps.length > 0).map((c) => (
                                             <div key={c.id} className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <AlertTriangle className="w-3 h-3 text-amber-600" />
@@ -1675,7 +1675,7 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
                                                 )}
                                             </div>
                                         ))}
-                                        {mockClients.filter((c) => c.complianceGaps.length > 0).length === 0 && (
+                                        {clients.filter((c) => c.complianceGaps.length > 0).length === 0 && (
                                             <div className="text-center py-8">
                                                 <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
                                                 <p className="text-[12px] text-[#6B7280] font-[500]">No outstanding compliance gaps</p>
@@ -1715,7 +1715,7 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
                                     <h3 className="text-[14px] font-[700] text-foreground mb-1">NPS Ratings</h3>
                                     <p className="text-[11px] text-muted-foreground mb-4">Net Promoter Scores</p>
                                     <div className="space-y-3">
-                                        {mockClients
+                                        {clients
                                             .filter((c) => c.engagementStatus !== "Completed")
                                             .sort((a, b) => b.npsRating - a.npsRating)
                                             .map((c) => (
@@ -1754,7 +1754,7 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {mockClients.map((c) => (
+                                            {clients.map((c) => (
                                                 <tr key={c.id} className="border-b border-[#F3F4F6] hover:bg-[#F9FAFB]">
                                                     <td className="py-2.5">
                                                         <button onClick={() => onNavigateToClient(c)} className="text-[11px] font-[600] text-[#4F46E5] hover:underline cursor-pointer">
@@ -1852,7 +1852,7 @@ export function ReportsPage({ onNavigateToClient }: ReportsPageProps) {
                                     <h3 className="text-[14px] font-[700] text-foreground mb-1">Incident History & Risk Categories</h3>
                                     <p className="text-[11px] text-muted-foreground mb-4">Active clients ranked by incident count</p>
                                     <div className="space-y-2.5">
-                                        {mockClients
+                                        {clients
                                             .filter((c) => c.engagementStatus !== "Completed")
                                             .sort((a, b) => b.incidentHistory - a.incidentHistory)
                                             .map((c) => (

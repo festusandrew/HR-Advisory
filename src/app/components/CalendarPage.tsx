@@ -39,8 +39,8 @@ import {
     UserPlus,
     XCircle,
 } from "lucide-react";
-import { mockClients } from "./mock-data";
 import type { Client } from "./mock-data";
+import { useApi } from "../context/ApiContext";
 
 /* ===== Constants ===== */
 const NOW = new Date("2026-02-06T12:00:00Z");
@@ -594,6 +594,7 @@ interface CalendarPageProps {
 }
 
 export function CalendarPage({ onNavigateToClient }: CalendarPageProps) {
+    const { clients: contextClients } = useApi();
     const [currentDate, setCurrentDate] = useState(NOW);
     const [viewMode, setViewMode] = useState<"month" | "week" | "day" | "agenda">("month");
     const [searchQuery, setSearchQuery] = useState("");
@@ -670,7 +671,7 @@ export function CalendarPage({ onNavigateToClient }: CalendarPageProps) {
     );
     const clientMeetings = upcomingEvents.filter((e) => e.type === "Client Meeting").length;
 
-    const clients = ["All", ...Array.from(new Set(mockClients.map((c) => c.name)))];
+    const clients = ["All", ...Array.from(new Set(contextClients.map((c) => c.name)))];
     const eventTypes: (EventType | "All")[] = [
         "All",
         "Client Meeting",
@@ -695,7 +696,7 @@ export function CalendarPage({ onNavigateToClient }: CalendarPageProps) {
     };
 
     const handleNavigateToClient = (clientId: string) => {
-        const client = mockClients.find((c) => c.id === clientId);
+        const client = contextClients.find((c) => c.id === clientId);
         if (client && onNavigateToClient) {
             onNavigateToClient(client);
         }
@@ -1329,6 +1330,7 @@ const EVENT_COLORS = [
 const ALL_ADVISORS = ["Aoife Brennan", "Cian Murphy", "Saoirse O'Neill", "Declan Byrne"];
 
 function CreateEventModal({ onClose }: { onClose: () => void }) {
+    const { clients } = useApi();
     const [done, setDone] = useState(false);
 
     const [title, setTitle] = useState("");
@@ -1388,7 +1390,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
         { id: "extra" as const, label: "Additional", icon: FileText },
     ];
 
-    const selectedClient = client ? mockClients.find((c) => c.name === client) : null;
+    const selectedClient = client ? clients.find((c) => c.name === client) : null;
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
@@ -1493,7 +1495,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
                                             className="w-full h-10 px-3 rounded-lg border border-input bg-background text-[13px] focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer"
                                         >
                                             <option value="">No client (internal event)</option>
-                                            {mockClients.map((c) => (
+                                            {clients.map((c) => (
                                                 <option key={c.id} value={c.name}>{c.tradingName}</option>
                                             ))}
                                         </select>

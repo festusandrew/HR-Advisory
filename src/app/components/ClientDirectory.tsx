@@ -19,8 +19,9 @@ import {
     CheckSquare,
     X,
 } from "lucide-react";
-import { mockClients, advisors, industries, locations, Client } from "./mock-data";
+import { advisors, industries, locations, Client } from "./mock-data";
 import { AddClientModal } from "./ClientProfileModals";
+import { useApi } from "../context/ApiContext";
 
 interface ClientDirectoryProps {
     onSelectClient: (client: Client) => void;
@@ -87,6 +88,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function ClientDirectory({ onSelectClient, searchValue }: ClientDirectoryProps) {
+    const { clients, addClient, updateClient } = useApi();
     const [viewMode, setViewMode] = useState<"table" | "card">("table");
     const [showFilters, setShowFilters] = useState(false);
     const [selectedClients, setSelectedClients] = useState<string[]>([]);
@@ -102,7 +104,7 @@ export function ClientDirectory({ onSelectClient, searchValue }: ClientDirectory
     const [sortField, setSortField] = useState<string>("name");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-    const filteredClients = mockClients.filter((c) => {
+    const filteredClients = clients.filter((c) => {
         if (searchValue && !c.name.toLowerCase().includes(searchValue.toLowerCase()) && !c.industry.toLowerCase().includes(searchValue.toLowerCase())) return false;
         if (filters.industry && c.industry !== filters.industry) return false;
         if (filters.engagementStatus && c.engagementStatus !== filters.engagementStatus) return false;
@@ -149,10 +151,10 @@ export function ClientDirectory({ onSelectClient, searchValue }: ClientDirectory
         setSelectedClients((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
     };
 
-    const activeCount = mockClients.filter((c) => c.engagementStatus === "Active").length;
+    const activeCount = clients.filter((c) => c.engagementStatus === "Active").length;
     const newThisMonth = 2;
-    const complianceRisks = mockClients.filter((c) => c.complianceStatus === "Attention Needed").length;
-    const overdueActions = mockClients.reduce((sum, c) => sum + c.tasks.filter((t) => t.status === "Overdue").length, 0);
+    const complianceRisks = clients.filter((c) => c.complianceStatus === "Attention Needed").length;
+    const overdueActions = clients.reduce((sum, c) => sum + c.tasks.filter((t) => t.status === "Overdue").length, 0);
 
     const clearFilters = () => {
         setFilters({ industry: "", engagementStatus: "", riskLevel: "", assignedAdvisor: "", location: "", contractType: "" });
@@ -243,7 +245,14 @@ export function ClientDirectory({ onSelectClient, searchValue }: ClientDirectory
                                     <button className="p-1.5 rounded hover:bg-gray-50 text-[#6B7280] cursor-pointer" title="Export">
                                         <Download className="w-3.5 h-3.5" />
                                     </button>
-                                    <button className="p-1.5 rounded hover:bg-gray-50 text-[#6B7280] cursor-pointer" title="Archive">
+                                    <button
+                                        onClick={async () => {
+                                            await Promise.all(selectedClients.map(id => updateClient(id, { engagementStatus: "Completed" })));
+                                            setSelectedClients([]);
+                                        }}
+                                        className="p-1.5 rounded hover:bg-gray-50 text-[#6B7280] cursor-pointer"
+                                        title="Archive"
+                                    >
                                         <Archive className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
@@ -495,7 +504,7 @@ export function ClientDirectory({ onSelectClient, searchValue }: ClientDirectory
                     <div className="flex items-center justify-between px-4 py-3 border-t border-[#F3F4F6]">
                         <p className="text-[12px] text-muted-foreground">
                             Showing <span className="font-[600] text-foreground">{sortedClients.length}</span> of{" "}
-                            <span className="font-[600] text-foreground">{mockClients.length}</span> clients
+                            <span className="font-[600] text-foreground">{clients.length}</span> clients
                         </p>
                         <div className="flex items-center gap-1">
                             <button className="px-3 py-1 text-[12px] rounded-md border border-[#E5E7EB] text-[#6B7280] hover:bg-gray-50 cursor-pointer">Previous</button>
@@ -505,7 +514,7 @@ export function ClientDirectory({ onSelectClient, searchValue }: ClientDirectory
                     </div>
                 </div>
             </div>
-            {showAddClient && <AddClientModal onClose={() => setShowAddClient(false)} onAdd={() => { }} />}
+            {showAddClient && <AddClientModal onClose={() => setShowAddClient(false)} onAdd={(formData) => addClient(formData)} />}
         </div>
     );
 }

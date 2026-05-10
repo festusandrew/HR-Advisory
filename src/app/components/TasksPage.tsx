@@ -30,8 +30,10 @@ import {
     Wallet,
     CircleDot,
 } from "lucide-react";
-import { mockClients, advisors } from "./mock-data";
+import { advisors } from "./mock-data";
 import type { Client, Task, TaskCategory } from "./mock-data";
+import { useApi } from "../context/ApiContext";
+import { CreateTaskModal } from "./ClientProfileModals";
 
 /* ===== Constants ===== */
 const NOW = new Date("2026-02-06T12:00:00Z");
@@ -202,85 +204,7 @@ function FilterDropdown({
     );
 }
 
-/* ===== Create Task Modal ===== */
-function CreateTaskModal({ onClose }: { onClose: () => void }) {
-    return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-            <div
-                className="bg-white rounded-2xl shadow-xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E7EB]">
-                    <h3 className="text-[16px] font-[700] text-foreground">Create New Task</h3>
-                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        <X className="w-4 h-4 text-[#6B7280]" />
-                    </button>
-                </div>
-                <div className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Task Title *</label>
-                        <input className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5]/40" placeholder="e.g. Complete WRC compliance audit for..." />
-                    </div>
-                    <div>
-                        <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Description</label>
-                        <textarea className="w-full h-20 px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5]/40" placeholder="Provide details, regulatory references, deliverables..." />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Client *</label>
-                            <select className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 appearance-none cursor-pointer">
-                                <option value="">Select client...</option>
-                                {mockClients.filter(c => c.engagementStatus !== "Completed").map((c) => (
-                                    <option key={c.id} value={c.id}>{c.tradingName}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Assigned To *</label>
-                            <select className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 appearance-none cursor-pointer">
-                                <option value="">Select advisor...</option>
-                                {advisors.map((a) => (
-                                    <option key={a} value={a}>{a}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Priority *</label>
-                            <select className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 appearance-none cursor-pointer">
-                                <option value="High">High</option>
-                                <option value="Medium">Medium</option>
-                                <option value="Low">Low</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Due Date *</label>
-                            <input type="date" className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 cursor-pointer" />
-                        </div>
-                        <div>
-                            <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Category *</label>
-                            <select className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 appearance-none cursor-pointer">
-                                <option value="">Select...</option>
-                                {ALL_CATEGORIES.map((c) => (
-                                    <option key={c} value={c}>{c}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-[12px] font-[600] text-[#4B5563] mb-1">Regulatory Reference</label>
-                        <input className="w-full px-3 py-2 text-[13px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20" placeholder="e.g. GDPR Article 35 / Organisation of Working Time Act 1997" />
-                    </div>
-                </div>
-                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-[#E5E7EB]">
-                    <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#E5E7EB] text-[12px] font-[600] text-[#4B5563] hover:bg-gray-50 cursor-pointer">Cancel</button>
-                    <button onClick={onClose} className="px-4 py-2 rounded-lg bg-[#4F46E5] text-white text-[12px] font-[600] hover:bg-[#4338CA] cursor-pointer">Create Task</button>
-                </div>
-            </div>
-        </div>
-    );
-}
+
 
 /* ===== Task Detail Panel ===== */
 function TaskDetailPanel({
@@ -292,10 +216,11 @@ function TaskDetailPanel({
     onClose: () => void;
     onNavigateToClient: (client: Client) => void;
 }) {
-    const catConf = CATEGORY_CONFIG[task.category];
+    const { clients, updateTask } = useApi();
+    const catConf = CATEGORY_CONFIG[task.category] || CATEGORY_CONFIG["General Advisory"];
     const CatIcon = catConf.icon;
     const days = daysUntil(task.dueDate);
-    const client = mockClients.find((c) => c.id === task.clientId);
+    const client = clients.find((c) => c.id === task.clientId);
 
     return (
         <div className="fixed inset-0 z-50 flex">
@@ -319,10 +244,30 @@ function TaskDetailPanel({
                     {/* Quick actions */}
                     <div className="flex items-center gap-2 px-6 pb-3">
                         {task.status === "Open" && (
-                            <button className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-[600] hover:bg-indigo-100 cursor-pointer border border-indigo-200">Start Task</button>
+                            <button
+                                onClick={async () => {
+                                    await updateTask(task.clientId, task.id, { status: "In Progress" });
+                                    onClose();
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-[600] hover:bg-indigo-100 cursor-pointer border border-indigo-200"
+                            >
+                                Start Task
+                            </button>
                         )}
                         {(task.status === "In Progress" || task.status === "Overdue") && (
-                            <button className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-[600] hover:bg-emerald-100 cursor-pointer border border-emerald-200">Mark Complete</button>
+                            <button
+                                onClick={async () => {
+                                    await updateTask(task.clientId, task.id, {
+                                        status: "Completed",
+                                        completedDate: new Date().toISOString().split("T")[0],
+                                        completedTimestamp: new Date().toISOString(),
+                                    });
+                                    onClose();
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-[600] hover:bg-emerald-100 cursor-pointer border border-emerald-200"
+                            >
+                                Mark Complete
+                            </button>
                         )}
                         <button className="px-3 py-1.5 rounded-lg bg-gray-50 text-[#4B5563] text-[11px] font-[600] hover:bg-gray-100 cursor-pointer border border-gray-200">Edit</button>
                         <button className="px-3 py-1.5 rounded-lg bg-gray-50 text-[#4B5563] text-[11px] font-[600] hover:bg-gray-100 cursor-pointer border border-gray-200">Reassign</button>
@@ -449,6 +394,7 @@ interface TasksPageProps {
 }
 
 export function TasksPage({ onNavigateToClient }: TasksPageProps) {
+    const { clients, addTask } = useApi();
     const [activeTab, setActiveTab] = useState<TabId>("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
@@ -465,7 +411,7 @@ export function TasksPage({ onNavigateToClient }: TasksPageProps) {
 
     // Enrich tasks with client info
     const allTasks: EnrichedTask[] = useMemo(() => {
-        return mockClients.flatMap((c) =>
+        return clients.flatMap((c) =>
             c.tasks.map((t) => ({
                 ...t,
                 clientId: c.id,
@@ -476,7 +422,7 @@ export function TasksPage({ onNavigateToClient }: TasksPageProps) {
                 clientIndustry: c.industry,
             }))
         );
-    }, []);
+    }, [clients]);
 
     // Active filter count
     const activeFilterCount = [filterStatus, filterPriority, filterAssignee, filterClient, filterCategory].filter(Boolean).length;
@@ -589,8 +535,8 @@ export function TasksPage({ onNavigateToClient }: TasksPageProps) {
     };
 
     const clientNames = useMemo(
-        () => [...new Set(mockClients.filter((c) => c.engagementStatus !== "Completed").map((c) => c.tradingName))],
-        []
+        () => [...new Set(clients.filter((c) => c.engagementStatus !== "Completed").map((c) => c.tradingName))],
+        [clients]
     );
 
     const tabs: { id: TabId; label: string; count: number; color?: string }[] = [
@@ -1011,7 +957,17 @@ export function TasksPage({ onNavigateToClient }: TasksPageProps) {
                     onNavigateToClient={onNavigateToClient}
                 />
             )}
-            {showCreateModal && <CreateTaskModal onClose={() => setShowCreateModal(false)} />}
+            {showCreateModal && (
+                <CreateTaskModal
+                    onClose={() => setShowCreateModal(false)}
+                    onAdd={async (taskData, selectedClientId) => {
+                        if (selectedClientId) {
+                            await addTask(selectedClientId, taskData);
+                        }
+                        setShowCreateModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 }
