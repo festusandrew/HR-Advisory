@@ -13,6 +13,8 @@ import {
     FileText,
     X,
     Tag,
+    Pencil,
+    Archive,
     Building2,
     User,
     Briefcase,
@@ -394,7 +396,7 @@ interface TasksPageProps {
 }
 
 export function TasksPage({ onNavigateToClient }: TasksPageProps) {
-    const { clients, addTask } = useApi();
+    const { clients, addTask, updateTask, updateClient } = useApi();
     const [activeTab, setActiveTab] = useState<TabId>("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
@@ -408,6 +410,7 @@ export function TasksPage({ onNavigateToClient }: TasksPageProps) {
     const [selectedTask, setSelectedTask] = useState<EnrichedTask | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+    const [actionTask, setActionTask] = useState<EnrichedTask | null>(null);
 
     // Enrich tasks with client info
     const allTasks: EnrichedTask[] = useMemo(() => {
@@ -911,7 +914,7 @@ export function TasksPage({ onNavigateToClient }: TasksPageProps) {
                                                         <DueDateLabel dueDate={task.dueDate} status={task.status} />
                                                     </td>
                                                     <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                                                        <button className="p-1 rounded hover:bg-gray-100 cursor-pointer">
+                                                        <button onClick={() => setActionTask(task)} className="p-1 rounded hover:bg-gray-100 cursor-pointer">
                                                             <MoreHorizontal className="w-4 h-4 text-[#9CA3AF]" />
                                                         </button>
                                                     </td>
@@ -968,6 +971,328 @@ export function TasksPage({ onNavigateToClient }: TasksPageProps) {
                     }}
                 />
             )}
+            {actionTask && (
+                <TaskActionsModal
+                    task={actionTask}
+                    clients={clients}
+                    updateTask={updateTask}
+                    updateClient={updateClient}
+                    onClose={() => setActionTask(null)}
+                />
+            )}
+        </div>
+    );
+}
+
+/* ===== TaskActionsModal Component ===== */
+interface TaskActionsModalProps {
+    task: EnrichedTask;
+    clients: Client[];
+    updateTask: (clientId: string, taskId: string, updates: Partial<Task>) => Promise<Task>;
+    updateClient: (clientId: string, updates: Partial<Client>) => Promise<Client>;
+    onClose: () => void;
+}
+
+export function TaskActionsModal({ task, clients, updateTask, updateClient, onClose }: TaskActionsModalProps) {
+    const [view, setView] = useState<"menu" | "edit" | "reassign" | "archive">("menu");
+    const [title, setTitle] = useState(task.title);
+    const [description, setDescription] = useState(task.description);
+    const [category, setCategory] = useState<TaskCategory>(task.category);
+    const [priority, setPriority] = useState<"High" | "Medium" | "Low">(task.priority);
+    const [regulatoryRef, setRegulatoryRef] = useState(task.regulatoryRef);
+    const [dueDate, setDueDate] = useState(task.dueDate);
+    const [assignedTo, setAssignedTo] = useState(task.assignedTo);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleMarkComplete = async () => {
+        setIsSubmitting(true);
+        try {
+            await updateTask(task.clientId, task.id, {
+                status: "Completed",
+                completedDate: new Date().toISOString().split("T")[0],
+            });
+            onClose();
+        } catch (err) {
+            console.error("Error marking task complete:", err);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleEdit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            await updateTask(task.clientId, task.id, {
+                title,
+                description,
+                category,
+                priority,
+                regulatoryRef: regulatoryRef || "N/A",
+                dueDate,
+            });
+            onClose();
+        } catch (err) {
+            console.error("Error updating task:", err);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleReassign = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            await updateTask(task.clientId, task.id, {
+                assignedTo,
+            });
+            onClose();
+        } catch (err) {
+            console.error("Error reassigning task:", err);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleArchive = async () => {
+        setIsSubmitting(true);
+        try {
+            const clientObj = clients.find(c => c.id === task.clientId);
+            if (clientObj) {
+                const remainingTasks = clientObj.tasks.filter(t => t.id !== task.id);
+                await updateClient(task.clientId, {
+                    tasks: remainingTasks
+                });
+            }
+            onClose();
+        } catch (err) {
+            console.error("Error archiving task:", err);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-white rounded-xl shadow-2xl border border-[#E5E7EB] overflow-hidden animate-in fade-in zoom-in duration-200">
+                
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-[#F3F4F6]">
+                    <div>
+                        <h3 className="text-[15px] font-[800] text-foreground">
+                            {view === "menu" && "Task Options"}
+                            {view === "edit" && "Edit Task"}
+                            {view === "reassign" && "Reassign Task"}
+                            {view === "archive" && "Archive Task"}
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 font-[500]">
+                            {task.clientTradingName} &middot; {task.title}
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#F3F4F6] transition-colors cursor-pointer text-[#6B7280]">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Main Views */}
+                {view === "menu" && (
+                    <div className="p-5 space-y-2">
+                        {task.status !== "Completed" && (
+                            <button
+                                onClick={handleMarkComplete}
+                                disabled={isSubmitting}
+                                className="w-full px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 text-[13px] font-[600] flex items-center gap-3 transition-colors text-left cursor-pointer disabled:opacity-55"
+                            >
+                                <CheckSquare className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                <div>
+                                    <p className="font-[700]">Mark Task as Complete</p>
+                                    <p className="text-[11px] text-emerald-700/85 font-[500]">Update status and record completion date</p>
+                                </div>
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setView("edit")}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 hover:bg-[#F9FAFB] text-foreground text-[13px] font-[600] flex items-center gap-3 transition-colors text-left cursor-pointer"
+                        >
+                            <Pencil className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                            <div>
+                                <p className="font-[700]">Edit Task Details</p>
+                                <p className="text-[11px] text-muted-foreground font-[500]">Modify title, description, priority, category or due date</p>
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => setView("reassign")}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 hover:bg-[#F9FAFB] text-foreground text-[13px] font-[600] flex items-center gap-3 transition-colors text-left cursor-pointer"
+                        >
+                            <User className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                            <div>
+                                <p className="font-[700]">Reassign Assignee</p>
+                                <p className="text-[11px] text-muted-foreground font-[500]">Delegate this action item to another advisor</p>
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => setView("archive")}
+                            className="w-full px-4 py-3 rounded-xl border border-red-100 bg-red-50/50 hover:bg-red-50 text-red-800 text-[13px] font-[600] flex items-center gap-3 transition-colors text-left cursor-pointer"
+                        >
+                            <Archive className="w-4 h-4 text-red-600 flex-shrink-0" />
+                            <div>
+                                <p className="font-[700]">Archive / Delete Task</p>
+                                <p className="text-[11px] text-red-700/80 font-[500]">Permanently archive this task from active listings</p>
+                            </div>
+                        </button>
+                    </div>
+                )}
+
+                {view === "edit" && (
+                    <form onSubmit={handleEdit} className="p-5 space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wider">Task Title</label>
+                            <input
+                                type="text"
+                                required
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="w-full px-3.5 py-2 text-[13px] border border-[#D1D5DB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] font-[500]"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wider">Description</label>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                className="w-full h-20 px-3.5 py-2 text-[13px] border border-[#D1D5DB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] resize-none font-[500]"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wider">Category</label>
+                                <select
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value as TaskCategory)}
+                                    className="w-full px-3.5 py-2 text-[13px] border border-[#D1D5DB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] font-[600]"
+                                >
+                                    {ALL_CATEGORIES.map((cat) => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wider">Priority</label>
+                                <select
+                                    value={priority}
+                                    onChange={(e) => setPriority(e.target.value as any)}
+                                    className="w-full px-3.5 py-2 text-[13px] border border-[#D1D5DB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] font-[600]"
+                                >
+                                    <option value="High">High</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Low">Low</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wider">Regulatory Ref</label>
+                                <input
+                                    type="text"
+                                    value={regulatoryRef}
+                                    onChange={(e) => setRegulatoryRef(e.target.value)}
+                                    className="w-full px-3.5 py-2 text-[13px] border border-[#D1D5DB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] font-[500]"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wider">Due Date</label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={dueDate}
+                                    onChange={(e) => setDueDate(e.target.value)}
+                                    className="w-full px-3.5 py-2 text-[13px] border border-[#D1D5DB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] font-[500]"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-2 border-t border-[#F3F4F6]">
+                            <button
+                                type="button"
+                                onClick={() => setView("menu")}
+                                className="flex-1 px-4 py-2 text-[12px] font-[600] border border-[#E5E7EB] rounded-lg text-[#4B5563] hover:bg-gray-50 cursor-pointer"
+                            >
+                                Back
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="flex-1 px-4 py-2 text-[12px] font-[600] bg-[#4F46E5] text-white rounded-lg hover:bg-[#4338CA] cursor-pointer disabled:opacity-50"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                )}
+
+                {view === "reassign" && (
+                    <form onSubmit={handleReassign} className="p-5 space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wider">Assign to Advisor</label>
+                            <select
+                                value={assignedTo}
+                                onChange={(e) => setAssignedTo(e.target.value)}
+                                className="w-full px-3.5 py-2.5 text-[13px] border border-[#D1D5DB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] font-[600] text-foreground"
+                            >
+                                {advisors.map((adv) => (
+                                    <option key={adv} value={adv}>{adv}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2 pt-2 border-t border-[#F3F4F6]">
+                            <button
+                                type="button"
+                                onClick={() => setView("menu")}
+                                className="flex-1 px-4 py-2 text-[12px] font-[600] border border-[#E5E7EB] rounded-lg text-[#4B5563] hover:bg-gray-50 cursor-pointer"
+                            >
+                                Back
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="flex-1 px-4 py-2 text-[12px] font-[600] bg-[#4F46E5] text-white rounded-lg hover:bg-[#4338CA] cursor-pointer disabled:opacity-50"
+                            >
+                                Confirm Reassignment
+                            </button>
+                        </div>
+                    </form>
+                )}
+
+                {view === "archive" && (
+                    <div className="p-5 space-y-4">
+                        <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800">
+                            <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-[13px] font-[700]">Warning: Destructive Action</p>
+                                <p className="text-[11px] mt-0.5 text-red-700/90 font-[500]">
+                                    Are you sure you want to archive this task? This will permanently remove the task from active workspaces and lists.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-2 border-t border-[#F3F4F6]">
+                            <button
+                                type="button"
+                                onClick={() => setView("menu")}
+                                className="flex-1 px-4 py-2 text-[12px] font-[600] border border-[#E5E7EB] rounded-lg text-[#4B5563] hover:bg-gray-50 cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleArchive}
+                                disabled={isSubmitting}
+                                className="flex-1 px-4 py-2 text-[12px] font-[600] bg-red-600 text-white rounded-lg hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                            >
+                                Yes, Archive Task
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
