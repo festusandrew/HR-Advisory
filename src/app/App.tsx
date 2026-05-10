@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { Dashboard } from "./components/Dashboard";
@@ -15,11 +15,76 @@ import { HelpCentrePage } from "./components/HelpCentrePage";
 import type { Client } from "./components/mock-data";
 import { useApi } from "./context/ApiContext";
 
+// Parse initial view from address bar URL
+const getInitialStateFromUrl = () => {
+    if (typeof window === "undefined") return { view: "dashboard", clientId: null };
+    const path = window.location.pathname;
+    const segments = path.split("/").filter(Boolean);
+    const viewSegment = segments[0] || "dashboard";
+    
+    let view = "dashboard";
+    let clientId: string | null = null;
+    
+    const validViews = [
+        "dashboard", "clients", "tasks", "documents", "reports", 
+        "compliance", "calendar", "integrations", "settings", "helpcentre"
+    ];
+    
+    if (validViews.includes(viewSegment)) {
+        view = viewSegment;
+    }
+    
+    if (view === "clients" && segments[1]) {
+        clientId = segments[1];
+    }
+    
+    return { view, clientId };
+};
+
 export default function App() {
     const { clients } = useApi();
-    const [activeView, setActiveView] = useState("dashboard");
-    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [activeView, setActiveView] = useState(() => getInitialStateFromUrl().view);
+    const [selectedClientId, setSelectedClientId] = useState<string | null>(() => getInitialStateFromUrl().clientId);
     const [searchValue, setSearchValue] = useState("");
+
+    // 1. Synchronize URL on activeView / selectedClientId changes
+    useEffect(() => {
+        const segments = [activeView];
+        if (activeView === "clients" && selectedClientId) {
+            segments.push(selectedClientId);
+        }
+        
+        const newPathname = "/" + segments.join("/");
+        if (window.location.pathname !== newPathname) {
+            window.history.pushState({ activeView, selectedClientId }, "", newPathname);
+        }
+    }, [activeView, selectedClientId]);
+
+    // 2. Listen to browser popstate (Back / Forward navigation buttons)
+    useEffect(() => {
+        const handlePopState = (event: PopStateEvent) => {
+            const state = event.state;
+            if (state && state.activeView) {
+                setActiveView(state.activeView);
+                setSelectedClientId(state.selectedClientId || null);
+            } else {
+                const parsed = getInitialStateFromUrl();
+                setActiveView(parsed.view);
+                setSelectedClientId(parsed.clientId);
+            }
+        };
+
+        window.addEventListener("popstate", handlePopState);
+        
+        // Populate initial state if empty
+        if (!window.history.state) {
+            window.history.replaceState({ activeView, selectedClientId }, "", window.location.pathname);
+        }
+
+        return () => {
+            window.removeEventListener("popstate", handlePopState);
+        };
+    }, []);
 
     const selectedClient = clients.find((c) => c.id === selectedClientId) || null;
 
