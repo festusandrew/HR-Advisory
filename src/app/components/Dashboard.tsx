@@ -173,22 +173,49 @@ export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateT
     const lowRiskClients = clients.filter((c) => c.riskLevel === "Low");
     const complianceAttention = clients.filter((c) => c.complianceStatus === "Attention Needed");
 
-    const allTasks = clients.flatMap((c) => c.tasks.map((t) => ({ ...t, clientName: c.name, clientId: c.id })));
+    const rawAllTasks = clients.flatMap((c) => c.tasks.map((t) => ({ ...t, clientName: c.name, clientId: c.id })));
+    const allTasks = rawAllTasks.filter((t) => {
+        const dueDays = daysUntil(t.dueDate);
+        if (timeFilter === "today") return dueDays <= 0;
+        if (timeFilter === "week") return dueDays <= 7;
+        if (timeFilter === "month") return dueDays <= 30;
+        return true;
+    });
     const overdueTasks = allTasks.filter((t) => t.status === "Overdue");
     const inProgressTasks = allTasks.filter((t) => t.status === "In Progress");
     const openTasks = allTasks.filter((t) => t.status === "Open");
 
-    const allAlerts = clients.flatMap((c) => c.alerts.map((a) => ({ ...a, clientName: c.name, clientId: c.id })));
+    const rawAllAlerts = clients.flatMap((c) => c.alerts.map((a) => ({ ...a, clientName: c.name, clientId: c.id })));
+    const allAlerts = rawAllAlerts.filter((a) => {
+        const diffDays = (now.getTime() - new Date(a.timestamp).getTime()) / 86400000;
+        if (timeFilter === "today") return diffDays <= 1;
+        if (timeFilter === "week") return diffDays <= 7;
+        if (timeFilter === "month") return diffDays <= 30;
+        return true;
+    });
     const criticalAlerts = allAlerts.filter((a) => a.severity === "Critical");
 
-    const allTimelineEvents = clients
-        .flatMap((c) => c.timeline.map((t) => ({ ...t, clientName: c.name, clientId: c.id })))
+    const rawAllTimelineEvents = clients.flatMap((c) => c.timeline.map((t) => ({ ...t, clientName: c.name, clientId: c.id })));
+    const allTimelineEvents = rawAllTimelineEvents
+        .filter((evt) => {
+            const diffDays = (now.getTime() - new Date(evt.timestamp).getTime()) / 86400000;
+            if (timeFilter === "today") return diffDays <= 1;
+            if (timeFilter === "week") return diffDays <= 7;
+            if (timeFilter === "month") return diffDays <= 30;
+            return true;
+        })
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     const upcomingReviews = clients
         .filter((c) => c.nextReviewDate)
         .map((c) => ({ client: c, daysUntil: daysUntil(c.nextReviewDate) }))
-        .filter((r) => r.daysUntil > 0 && r.daysUntil <= 90)
+        .filter((r) => {
+            if (r.daysUntil <= 0) return false;
+            if (timeFilter === "today") return r.daysUntil <= 7;
+            if (timeFilter === "week") return r.daysUntil <= 14;
+            if (timeFilter === "month") return r.daysUntil <= 90;
+            return r.daysUntil <= 90;
+        })
         .sort((a, b) => a.daysUntil - b.daysUntil);
 
     const totalContractValue = clients
@@ -572,13 +599,13 @@ export function Dashboard({ onNavigateToClient, onNavigateToClients, onNavigateT
                                         <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
                                             <circle cx="50" cy="50" r="40" fill="none" stroke="#F3F4F6" strokeWidth="10" />
                                             <circle cx="50" cy="50" r="40" fill="none" stroke="#EF4444" strokeWidth="10"
-                                                strokeDasharray={`${(getEffectiveOverdueTasks.length / allTasks.length) * 251.2} 251.2`} strokeLinecap="round" />
+                                                strokeDasharray={`${(getEffectiveOverdueTasks.length / (allTasks.length || 1)) * 251.2} 251.2`} strokeLinecap="round" />
                                             <circle cx="50" cy="50" r="40" fill="none" stroke="#6366F1" strokeWidth="10"
-                                                strokeDasharray={`${(getEffectiveInProgressTasks.length / allTasks.length) * 251.2} 251.2`}
-                                                strokeDashoffset={`${-(getEffectiveOverdueTasks.length / allTasks.length) * 251.2}`} strokeLinecap="round" />
+                                                strokeDasharray={`${(getEffectiveInProgressTasks.length / (allTasks.length || 1)) * 251.2} 251.2`}
+                                                strokeDashoffset={`${-(getEffectiveOverdueTasks.length / (allTasks.length || 1)) * 251.2}`} strokeLinecap="round" />
                                             <circle cx="50" cy="50" r="40" fill="none" stroke="#3B82F6" strokeWidth="10"
-                                                strokeDasharray={`${(openTasks.length / allTasks.length) * 251.2} 251.2`}
-                                                strokeDashoffset={`${-((getEffectiveOverdueTasks.length + getEffectiveInProgressTasks.length) / allTasks.length) * 251.2}`} strokeLinecap="round" />
+                                                strokeDasharray={`${(openTasks.length / (allTasks.length || 1)) * 251.2} 251.2`}
+                                                strokeDashoffset={`${-((getEffectiveOverdueTasks.length + getEffectiveInProgressTasks.length) / (allTasks.length || 1)) * 251.2}`} strokeLinecap="round" />
                                         </svg>
                                         <div className="absolute inset-0 flex items-center justify-center">
                                             <div className="text-center">
